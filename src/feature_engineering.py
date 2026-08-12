@@ -1,30 +1,37 @@
 import pandas as pd
+import joblib
 
 from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
-# --------------------------------------------------
-# 1. Load cleaned dataset
-# --------------------------------------------------
-
-file_path = "data/processed/cleaned_customer_churn.csv"
-
-df = pd.read_csv(file_path)
+# ==========================================================
+# CUSTOMER CHURN - FEATURE ENGINEERING
+# ==========================================================
 
 print("=" * 60)
 print("CUSTOMER CHURN - FEATURE ENGINEERING")
 print("=" * 60)
 
+
+# ----------------------------------------------------------
+# 1. Load cleaned dataset
+# ----------------------------------------------------------
+
+file_path = "data/processed/cleaned_customer_churn.csv"
+
+df = pd.read_csv(file_path)
+
 print("\nDataset Shape:")
 print(df.shape)
 
 
-# --------------------------------------------------
-# 2. Remove target and unnecessary geographic columns
-# --------------------------------------------------
+# ----------------------------------------------------------
+# 2. Separate features and target
+# ----------------------------------------------------------
 
+# Remove target and unnecessary geographic features
 columns_to_drop = [
     "Churn Label",
     "City",
@@ -37,7 +44,6 @@ X = df.drop(columns=columns_to_drop)
 
 y = df["Churn Label"]
 
-
 print("\nFeatures Shape:")
 print(X.shape)
 
@@ -45,9 +51,9 @@ print("\nTarget Shape:")
 print(y.shape)
 
 
-# --------------------------------------------------
+# ----------------------------------------------------------
 # 3. Identify numerical and categorical features
-# --------------------------------------------------
+# ----------------------------------------------------------
 
 numerical_features = X.select_dtypes(
     include=["int64", "float64"]
@@ -57,7 +63,6 @@ categorical_features = X.select_dtypes(
     include=["object", "str"]
 ).columns.tolist()
 
-
 print("\nNumerical Features:")
 print(numerical_features)
 
@@ -65,9 +70,9 @@ print("\nCategorical Features:")
 print(categorical_features)
 
 
-# --------------------------------------------------
-# 4. Split data into training and testing sets
-# --------------------------------------------------
+# ----------------------------------------------------------
+# 4. Train/Test Split
+# ----------------------------------------------------------
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -77,7 +82,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     stratify=y
 )
 
-
 print("\nTraining Data Shape:")
 print(X_train.shape)
 
@@ -85,19 +89,19 @@ print("\nTesting Data Shape:")
 print(X_test.shape)
 
 
-# --------------------------------------------------
+# ----------------------------------------------------------
 # 5. Create preprocessing transformer
-# --------------------------------------------------
+# ----------------------------------------------------------
 
 preprocessor = ColumnTransformer(
     transformers=[
         (
-            "num",
+            "numerical",
             StandardScaler(),
             numerical_features
         ),
         (
-            "cat",
+            "categorical",
             OneHotEncoder(
                 handle_unknown="ignore",
                 sparse_output=False
@@ -108,20 +112,38 @@ preprocessor = ColumnTransformer(
 )
 
 
-# --------------------------------------------------
-# 6. Fit preprocessing on training data only
-# --------------------------------------------------
+# ----------------------------------------------------------
+# 6. Fit preprocessing ONLY on training data
+# ----------------------------------------------------------
 
 X_train_processed = preprocessor.fit_transform(X_train)
 
 X_test_processed = preprocessor.transform(X_test)
 
 
-# --------------------------------------------------
-# 7. Convert processed data to DataFrame
-# --------------------------------------------------
+# ----------------------------------------------------------
+# 7. Save preprocessing pipeline
+# ----------------------------------------------------------
+
+joblib.dump(
+    preprocessor,
+    "models/preprocessor.pkl"
+)
+
+print("\nPreprocessor saved:")
+print("models/preprocessor.pkl")
+
+
+# ----------------------------------------------------------
+# 8. Get processed feature names
+# ----------------------------------------------------------
 
 feature_names = preprocessor.get_feature_names_out()
+
+
+# ----------------------------------------------------------
+# 9. Convert processed data to DataFrames
+# ----------------------------------------------------------
 
 X_train_processed = pd.DataFrame(
     X_train_processed,
@@ -134,9 +156,9 @@ X_test_processed = pd.DataFrame(
 )
 
 
-# --------------------------------------------------
-# 8. Save processed datasets
-# --------------------------------------------------
+# ----------------------------------------------------------
+# 10. Save processed datasets
+# ----------------------------------------------------------
 
 X_train_processed.to_csv(
     "data/processed/X_train.csv",
@@ -159,9 +181,9 @@ y_test.to_csv(
 )
 
 
-# --------------------------------------------------
-# 9. Display final information
-# --------------------------------------------------
+# ----------------------------------------------------------
+# 11. Display final information
+# ----------------------------------------------------------
 
 print("\nProcessed Training Data Shape:")
 print(X_train_processed.shape)
@@ -169,13 +191,25 @@ print(X_train_processed.shape)
 print("\nProcessed Testing Data Shape:")
 print(X_test_processed.shape)
 
-print("\nTarget Distribution in Training Data:")
+print("\nTarget Distribution - Training:")
 print(y_train.value_counts())
 
-print("\nTarget Distribution in Testing Data:")
+print("\nTarget Distribution - Testing:")
 print(y_test.value_counts())
 
-print("\nFeature engineering completed successfully!")
 
-print("\nProcessed files saved in:")
-print("data/processed/")
+# ----------------------------------------------------------
+# 12. Final message
+# ----------------------------------------------------------
+
+print("\n" + "=" * 60)
+print("FEATURE ENGINEERING COMPLETED SUCCESSFULLY!")
+print("=" * 60)
+
+print("\nFiles created:")
+
+print("data/processed/X_train.csv")
+print("data/processed/X_test.csv")
+print("data/processed/y_train.csv")
+print("data/processed/y_test.csv")
+print("models/preprocessor.pkl")
