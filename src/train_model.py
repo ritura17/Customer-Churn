@@ -14,9 +14,18 @@ from sklearn.metrics import (
 )
 
 
-# --------------------------------------------------
-# 1. Load processed training and testing data
-# --------------------------------------------------
+# ==========================================================
+# CUSTOMER CHURN - MODEL TRAINING
+# ==========================================================
+
+print("=" * 60)
+print("CUSTOMER CHURN - MODEL TRAINING")
+print("=" * 60)
+
+
+# ----------------------------------------------------------
+# 1. Load processed data
+# ----------------------------------------------------------
 
 X_train = pd.read_csv("data/processed/X_train.csv")
 X_test = pd.read_csv("data/processed/X_test.csv")
@@ -25,10 +34,6 @@ y_train = pd.read_csv("data/processed/y_train.csv").squeeze()
 y_test = pd.read_csv("data/processed/y_test.csv").squeeze()
 
 
-print("=" * 60)
-print("CUSTOMER CHURN - MODEL TRAINING")
-print("=" * 60)
-
 print("\nTraining Data Shape:")
 print(X_train.shape)
 
@@ -36,9 +41,9 @@ print("\nTesting Data Shape:")
 print(X_test.shape)
 
 
-# --------------------------------------------------
+# ----------------------------------------------------------
 # 2. Define models
-# --------------------------------------------------
+# ----------------------------------------------------------
 
 models = {
 
@@ -68,12 +73,11 @@ models = {
 }
 
 
-# --------------------------------------------------
+# ----------------------------------------------------------
 # 3. Train and evaluate models
-# --------------------------------------------------
+# ----------------------------------------------------------
 
 results = []
-
 trained_models = {}
 
 for name, model in models.items():
@@ -81,13 +85,11 @@ for name, model in models.items():
     print("\n" + "-" * 60)
     print(f"Training: {name}")
 
-    # Train
+    # Train model
     model.fit(X_train, y_train)
 
-    # Prediction
+    # Predictions
     y_pred = model.predict(X_test)
-
-    # Probability for ROC-AUC
     y_probability = model.predict_proba(X_test)[:, 1]
 
     # Metrics
@@ -134,9 +136,9 @@ for name, model in models.items():
     print(f"ROC-AUC  : {roc_auc:.4f}")
 
 
-# --------------------------------------------------
-# 4. Compare models
-# --------------------------------------------------
+# ----------------------------------------------------------
+# 4. Model comparison
+# ----------------------------------------------------------
 
 results_df = pd.DataFrame(results)
 
@@ -147,9 +149,9 @@ print("=" * 60)
 print(results_df.to_string(index=False))
 
 
-# --------------------------------------------------
+# ----------------------------------------------------------
 # 5. Select best model using ROC-AUC
-# --------------------------------------------------
+# ----------------------------------------------------------
 
 best_model_name = results_df.loc[
     results_df["ROC-AUC"].idxmax(),
@@ -162,25 +164,32 @@ print("\nBest Model:")
 print(best_model_name)
 
 
-# --------------------------------------------------
+# ----------------------------------------------------------
 # 6. Save best model
-# --------------------------------------------------
+# ----------------------------------------------------------
 
 joblib.dump(
     best_model,
     "models/best_churn_model.pkl"
 )
 
-# Save model comparison
+print("\nBest model saved:")
+print("models/best_churn_model.pkl")
+
+
+# ----------------------------------------------------------
+# 7. Save model comparison
+# ----------------------------------------------------------
+
 results_df.to_csv(
     "reports/model_comparison.csv",
     index=False
 )
 
-print("\nBest model saved:")
-print("models/best_churn_model.pkl")
-
 print("\nModel comparison saved:")
 print("reports/model_comparison.csv")
 
-print("\nModel training completed successfully!")
+
+print("\n" + "=" * 60)
+print("MODEL TRAINING COMPLETED SUCCESSFULLY!")
+print("=" * 60)
