@@ -2,6 +2,12 @@
 
 An end-to-end Machine Learning project that predicts whether a telecom customer is likely to churn.
 
+## 🚀 Live Demo
+
+[Open Customer Churn Prediction App](https://customer-churn-k8scjyvcoug3dypgma84i9.streamlit.app/)
+
+The application allows users to enter customer information and receive a churn prediction with the estimated churn probability.
+
 The project uses the IBM Telco Customer Churn dataset and includes data preprocessing, exploratory data analysis, feature engineering, model training, model evaluation, and an interactive Streamlit web application.
 
 ---
