@@ -1,6 +1,12 @@
-# 📊 Customer Churn Prediction
+# 📊 Customer Churn Intelligence
 
-An end-to-end, reproducible Machine Learning project that predicts telecom customer churn risk, explains individual predictions using SHAP model-influence values, and serves single and batch predictions through an interactive Streamlit web application.
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-1.9.0-F7931E?logo=scikit-learn&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.60.0-FF4B4B?logo=streamlit&logoColor=white)
+![Plotly](https://img.shields.io/badge/Plotly-7.2.0-3F4F75?logo=plotly&logoColor=white)
+![Ruff](https://img.shields.io/badge/Lint-Ruff-D7FF64)
+
+An end-to-end, reproducible Machine Learning project that predicts telecom customer churn risk, explains individual predictions using SHAP model-influence values, and serves single and batch predictions through an interactive SaaS-style Streamlit dashboard.
 
 ---
 
