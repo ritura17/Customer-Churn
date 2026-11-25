@@ -1,320 +1,72 @@
+"""Customer Churn Intelligence — Streamlit Application Entrypoint."""
+
 import streamlit as st
-import pandas as pd
-import joblib
 
-
-# ==========================================================
-# CUSTOMER CHURN PREDICTION - STREAMLIT APP
-# ==========================================================
+from src.ui.data_loader import get_cached_model_artifacts
+from src.ui.pages import (
+    render_about_model_page,
+    render_analytics_page,
+    render_dashboard_page,
+    render_model_insights_page,
+    render_prediction_page,
+)
+from src.ui.styles import inject_custom_css
 
 st.set_page_config(
-    page_title="Customer Churn Prediction",
+    page_title="Customer Churn Intelligence",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
+inject_custom_css()
 
-# ----------------------------------------------------------
-# Load Model and Preprocessor
-# ----------------------------------------------------------
+try:
+    pipeline, metadata = get_cached_model_artifacts()
+except Exception as exc:
+    st.error(
+        f"Unable to load trained model artifacts: {exc}\n\n"
+        "Run `python run_pipeline.py` from the project root to generate the pipeline."
+    )
+    st.stop()
 
-@st.cache_resource
-def load_model():
-
-    model = joblib.load(
-        "models/best_churn_model.pkl"
+with st.sidebar:
+    st.markdown(
+        """
+        <div class="brand-box">
+            <div class="brand-title">Customer Churn Intelligence</div>
+            <div class="brand-subtitle">Predictive Retention Analytics</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    preprocessor = joblib.load(
-        "models/preprocessor.pkl"
+    page = st.radio(
+        "Navigation",
+        options=[
+            "Dashboard",
+            "Customer Prediction",
+            "Analytics",
+            "Model Insights",
+            "About Model",
+        ],
+        label_visibility="collapsed",
     )
 
-    return model, preprocessor
-
-
-model, preprocessor = load_model()
-
-
-# ----------------------------------------------------------
-# Header
-# ----------------------------------------------------------
-
-st.title("📊 Customer Churn Prediction")
-
-st.write(
-    "Predict whether a telecom customer is likely to churn "
-    "using a machine learning model."
-)
-
-st.divider()
-
-
-# ----------------------------------------------------------
-# Customer Information
-# ----------------------------------------------------------
-
-st.header("👤 Customer Information")
-
-col1, col2, col3 = st.columns(3)
-
-
-with col1:
-
-    gender = st.selectbox(
-        "Gender",
-        ["Male", "Female"]
+    st.markdown("---")
+    st.caption(
+        f"**Active Model:** {metadata.get('best_model_name', 'Gradient Boosting')}\n\n"
+        f"**Decision Threshold:** {metadata.get('optimal_threshold', 0.35):.2f} (CV-Tuned)\n\n"
+        f"**Test ROC-AUC:** {metadata.get('test_metrics_tuned_threshold', {}).get('roc_auc', 0.8554):.4f}"
     )
 
-    senior_citizen = st.selectbox(
-        "Senior Citizen",
-        ["No", "Yes"]
-    )
-
-    partner = st.selectbox(
-        "Partner",
-        ["No", "Yes"]
-    )
-
-    dependents = st.selectbox(
-        "Dependents",
-        ["No", "Yes"]
-    )
-
-    tenure = st.number_input(
-        "Tenure Months",
-        min_value=0,
-        max_value=100,
-        value=12
-    )
-
-
-with col2:
-
-    phone_service = st.selectbox(
-        "Phone Service",
-        ["Yes", "No"]
-    )
-
-    multiple_lines = st.selectbox(
-        "Multiple Lines",
-        ["No", "Yes", "No phone service"]
-    )
-
-    internet_service = st.selectbox(
-        "Internet Service",
-        ["DSL", "Fiber optic", "No"]
-    )
-
-    online_security = st.selectbox(
-        "Online Security",
-        ["No", "Yes", "No internet service"]
-    )
-
-    online_backup = st.selectbox(
-        "Online Backup",
-        ["No", "Yes", "No internet service"]
-    )
-
-    device_protection = st.selectbox(
-        "Device Protection",
-        ["No", "Yes", "No internet service"]
-    )
-
-
-with col3:
-
-    tech_support = st.selectbox(
-        "Tech Support",
-        ["No", "Yes", "No internet service"]
-    )
-
-    streaming_tv = st.selectbox(
-        "Streaming TV",
-        ["No", "Yes", "No internet service"]
-    )
-
-    streaming_movies = st.selectbox(
-        "Streaming Movies",
-        ["No", "Yes", "No internet service"]
-    )
-
-    contract = st.selectbox(
-        "Contract",
-        [
-            "Month-to-month",
-            "One year",
-            "Two year"
-        ]
-    )
-
-    paperless_billing = st.selectbox(
-        "Paperless Billing",
-        ["Yes", "No"]
-    )
-
-    payment_method = st.selectbox(
-        "Payment Method",
-        [
-            "Electronic check",
-            "Mailed check",
-            "Bank transfer (automatic)",
-            "Credit card (automatic)"
-        ]
-    )
-
-
-# ----------------------------------------------------------
-# Financial Information
-# ----------------------------------------------------------
-
-st.divider()
-
-st.header("💰 Financial Information")
-
-col4, col5, col6 = st.columns(3)
-
-
-with col4:
-
-    monthly_charges = st.number_input(
-        "Monthly Charges",
-        min_value=0.0,
-        value=50.0,
-        step=1.0
-    )
-
-
-with col5:
-
-    total_charges = st.number_input(
-        "Total Charges",
-        min_value=0.0,
-        value=600.0,
-        step=10.0
-    )
-
-
-with col6:
-
-    cltv = st.number_input(
-        "CLTV",
-        min_value=0,
-        value=4000,
-        step=100
-    )
-
-
-# ----------------------------------------------------------
-# Create Customer DataFrame
-# ----------------------------------------------------------
-
-customer = pd.DataFrame([{
-
-    "Gender": gender,
-    "Senior Citizen": senior_citizen,
-    "Partner": partner,
-    "Dependents": dependents,
-    "Tenure Months": tenure,
-    "Phone Service": phone_service,
-    "Multiple Lines": multiple_lines,
-    "Internet Service": internet_service,
-    "Online Security": online_security,
-    "Online Backup": online_backup,
-    "Device Protection": device_protection,
-    "Tech Support": tech_support,
-    "Streaming TV": streaming_tv,
-    "Streaming Movies": streaming_movies,
-    "Contract": contract,
-    "Paperless Billing": paperless_billing,
-    "Payment Method": payment_method,
-    "Monthly Charges": monthly_charges,
-    "Total Charges": total_charges,
-    "CLTV": cltv
-
-}])
-
-
-# ----------------------------------------------------------
-# Prediction
-# ----------------------------------------------------------
-
-st.divider()
-
-if st.button(
-    "🔍 Predict Customer Churn",
-    use_container_width=True
-):
-
-    # Preprocess customer data
-    customer_processed = preprocessor.transform(
-        customer
-    )
-
-    # Get feature names
-    feature_names = (
-        preprocessor.get_feature_names_out()
-    )
-
-    # Convert to DataFrame
-    customer_processed = pd.DataFrame(
-        customer_processed,
-        columns=feature_names
-    )
-
-    # Prediction
-    prediction = model.predict(
-        customer_processed
-    )[0]
-
-    # Churn probability
-    probability = model.predict_proba(
-        customer_processed
-    )[0][1]
-
-
-    # ------------------------------------------------------
-    # Result
-    # ------------------------------------------------------
-
-    st.divider()
-
-    st.header("🎯 Prediction Result")
-
-
-    if prediction == 1:
-
-        st.error(
-            "⚠️ Customer is likely to churn"
-        )
-
-    else:
-
-        st.success(
-            "✅ Customer is likely to stay"
-        )
-
-
-    st.metric(
-        "Churn Probability",
-        f"{probability:.2%}"
-    )
-
-
-    st.progress(
-        float(probability)
-    )
-
-
-    if probability >= 0.5:
-
-        st.warning(
-            "This customer has a relatively high "
-            "probability of churn."
-        )
-
-    else:
-
-        st.info(
-            "This customer has a relatively low "
-            "probability of churn."
-        )
+if page == "Dashboard":
+    render_dashboard_page(pipeline, metadata)
+elif page == "Customer Prediction":
+    render_prediction_page(pipeline, metadata)
+elif page == "Analytics":
+    render_analytics_page()
+elif page == "Model Insights":
+    render_model_insights_page(metadata)
+elif page == "About Model":
+    render_about_model_page(metadata)

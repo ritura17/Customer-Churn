@@ -1,215 +1,132 @@
-import pandas as pd
-import joblib
+"""Feature validation, stratified splitting, and sklearn preprocessing pipeline."""
 
-from sklearn.model_selection import train_test_split
+from pathlib import Path
+from typing import Tuple
+
+import joblib
+import pandas as pd
 from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-
-# ==========================================================
-# CUSTOMER CHURN - FEATURE ENGINEERING
-# ==========================================================
-
-print("=" * 60)
-print("CUSTOMER CHURN - FEATURE ENGINEERING")
-print("=" * 60)
-
-
-# ----------------------------------------------------------
-# 1. Load cleaned dataset
-# ----------------------------------------------------------
-
-file_path = "data/processed/cleaned_customer_churn.csv"
-
-df = pd.read_csv(file_path)
-
-print("\nDataset Shape:")
-print(df.shape)
-
-
-# ----------------------------------------------------------
-# 2. Separate features and target
-# ----------------------------------------------------------
-
-# Remove target and unnecessary geographic features
-columns_to_drop = [
-    "Churn Label",
-    "City",
-    "Zip Code",
-    "Latitude",
-    "Longitude"
-]
-
-X = df.drop(columns=columns_to_drop)
-
-y = df["Churn Label"]
-
-print("\nFeatures Shape:")
-print(X.shape)
-
-print("\nTarget Shape:")
-print(y.shape)
-
-
-# ----------------------------------------------------------
-# 3. Identify numerical and categorical features
-# ----------------------------------------------------------
-
-numerical_features = X.select_dtypes(
-    include=["int64", "float64"]
-).columns.tolist()
-
-categorical_features = X.select_dtypes(
-    include=["object", "str"]
-).columns.tolist()
-
-print("\nNumerical Features:")
-print(numerical_features)
-
-print("\nCategorical Features:")
-print(categorical_features)
-
-
-# ----------------------------------------------------------
-# 4. Train/Test Split
-# ----------------------------------------------------------
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.20,
-    random_state=42,
-    stratify=y
+from src.config import (
+    CATEGORICAL_FEATURES,
+    CLEANED_DATA_PATH,
+    DROP_GEO_COLUMNS,
+    FEATURE_COLUMNS,
+    MODELS_DIR,
+    NUMERICAL_FEATURES,
+    PREPROCESSOR_PATH,
+    PROCESSED_DATA_DIR,
+    RANDOM_STATE,
+    TARGET_COLUMN,
+    TEST_SIZE,
+    X_TEST_PATH,
+    X_TRAIN_PATH,
+    Y_TEST_PATH,
+    Y_TRAIN_PATH,
 )
 
-print("\nTraining Data Shape:")
-print(X_train.shape)
 
-print("\nTesting Data Shape:")
-print(X_test.shape)
+def validate_input_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Validate that input DataFrame contains all required features and valid numeric values."""
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Input data must be a pandas DataFrame.")
+    if df.empty:
+        raise ValueError("Input DataFrame is empty.")
+
+    missing_cols = [col for col in FEATURE_COLUMNS if col not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required feature columns: {missing_cols}")
+
+    validated = df[FEATURE_COLUMNS].copy()
+    for col in NUMERICAL_FEATURES:
+        validated[col] = pd.to_numeric(validated[col], errors="coerce")
+        if (validated[col].dropna() < 0).any():
+            raise ValueError(f"Numerical feature '{col}' cannot contain negative values.")
+
+    for col in CATEGORICAL_FEATURES:
+        validated[col] = validated[col].astype("object")
+
+    return validated
 
 
-# ----------------------------------------------------------
-# 5. Create preprocessing transformer
-# ----------------------------------------------------------
+def build_preprocessor() -> ColumnTransformer:
+    """Build leakage-free ColumnTransformer with imputation, scaling, and one-hot encoding."""
+    numerical_pipeline = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+        ]
+    )
 
-preprocessor = ColumnTransformer(
-    transformers=[
-        (
-            "numerical",
-            StandardScaler(),
-            numerical_features
-        ),
-        (
-            "categorical",
-            OneHotEncoder(
-                handle_unknown="ignore",
-                sparse_output=False
+    categorical_pipeline = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            (
+                "encoder",
+                OneHotEncoder(handle_unknown="ignore", sparse_output=False),
             ),
-            categorical_features
+        ]
+    )
+
+    return ColumnTransformer(
+        transformers=[
+            ("numerical", numerical_pipeline, NUMERICAL_FEATURES),
+            ("categorical", categorical_pipeline, CATEGORICAL_FEATURES),
+        ],
+        verbose_feature_names_out=True,
+    )
+
+
+def prepare_train_test_splits(
+    cleaned_path: Path = CLEANED_DATA_PATH,
+    test_size: float = TEST_SIZE,
+    random_state: int = RANDOM_STATE,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """Load cleaned dataset, perform stratified train/test split, and save raw split CSVs."""
+    if not cleaned_path.exists():
+        raise FileNotFoundError(
+            f"Cleaned dataset not found at {cleaned_path}. Run data_preprocessing.py first."
         )
-    ]
-)
+
+    df = pd.read_csv(cleaned_path)
+    drop_cols = [c for c in [TARGET_COLUMN, *DROP_GEO_COLUMNS] if c in df.columns]
+    X = validate_input_dataframe(df.drop(columns=drop_cols))
+    y = df[TARGET_COLUMN].astype(int)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=test_size,
+        random_state=random_state,
+        stratify=y,
+    )
+
+    PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    X_train.to_csv(X_TRAIN_PATH, index=False)
+    X_test.to_csv(X_TEST_PATH, index=False)
+    y_train.to_csv(Y_TRAIN_PATH, index=False)
+    y_test.to_csv(Y_TEST_PATH, index=False)
+
+    # Fit and save standalone preprocessor solely on X_train for inspection/compatibility
+    preprocessor = build_preprocessor()
+    preprocessor.fit(X_train)
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    joblib.dump(preprocessor, PREPROCESSOR_PATH)
+
+    print("=" * 60)
+    print("CUSTOMER CHURN - FEATURE ENGINEERING & SPLIT")
+    print("=" * 60)
+    print(f"X_train shape: {X_train.shape} | X_test shape: {X_test.shape}")
+    print(f"Train churn rate: {y_train.mean():.4f} | Test churn rate: {y_test.mean():.4f}")
+    print(f"Saved split datasets to: {PROCESSED_DATA_DIR}")
+    print(f"Saved preprocessor to: {PREPROCESSOR_PATH}")
+
+    return X_train, X_test, y_train, y_test
 
 
-# ----------------------------------------------------------
-# 6. Fit preprocessing ONLY on training data
-# ----------------------------------------------------------
-
-X_train_processed = preprocessor.fit_transform(X_train)
-
-X_test_processed = preprocessor.transform(X_test)
-
-
-# ----------------------------------------------------------
-# 7. Save preprocessing pipeline
-# ----------------------------------------------------------
-
-joblib.dump(
-    preprocessor,
-    "models/preprocessor.pkl"
-)
-
-print("\nPreprocessor saved:")
-print("models/preprocessor.pkl")
-
-
-# ----------------------------------------------------------
-# 8. Get processed feature names
-# ----------------------------------------------------------
-
-feature_names = preprocessor.get_feature_names_out()
-
-
-# ----------------------------------------------------------
-# 9. Convert processed data to DataFrames
-# ----------------------------------------------------------
-
-X_train_processed = pd.DataFrame(
-    X_train_processed,
-    columns=feature_names
-)
-
-X_test_processed = pd.DataFrame(
-    X_test_processed,
-    columns=feature_names
-)
-
-
-# ----------------------------------------------------------
-# 10. Save processed datasets
-# ----------------------------------------------------------
-
-X_train_processed.to_csv(
-    "data/processed/X_train.csv",
-    index=False
-)
-
-X_test_processed.to_csv(
-    "data/processed/X_test.csv",
-    index=False
-)
-
-y_train.to_csv(
-    "data/processed/y_train.csv",
-    index=False
-)
-
-y_test.to_csv(
-    "data/processed/y_test.csv",
-    index=False
-)
-
-
-# ----------------------------------------------------------
-# 11. Display final information
-# ----------------------------------------------------------
-
-print("\nProcessed Training Data Shape:")
-print(X_train_processed.shape)
-
-print("\nProcessed Testing Data Shape:")
-print(X_test_processed.shape)
-
-print("\nTarget Distribution - Training:")
-print(y_train.value_counts())
-
-print("\nTarget Distribution - Testing:")
-print(y_test.value_counts())
-
-
-# ----------------------------------------------------------
-# 12. Final message
-# ----------------------------------------------------------
-
-print("\n" + "=" * 60)
-print("FEATURE ENGINEERING COMPLETED SUCCESSFULLY!")
-print("=" * 60)
-
-print("\nFiles created:")
-
-print("data/processed/X_train.csv")
-print("data/processed/X_test.csv")
-print("data/processed/y_train.csv")
-print("data/processed/y_test.csv")
-print("models/preprocessor.pkl")
+if __name__ == "__main__":
+    prepare_train_test_splits()

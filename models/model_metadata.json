@@ -1,0 +1,167 @@
+{
+  "best_model_name": "Gradient Boosting",
+  "best_params": {
+    "classifier__subsample": 0.8,
+    "classifier__n_estimators": 100,
+    "classifier__max_depth": 4,
+    "classifier__learning_rate": 0.03
+  },
+  "selection_metric": "CV ROC-AUC (5-fold Stratified)",
+  "cv_results": [
+    {
+      "Model": "Gradient Boosting",
+      "CV Accuracy": 0.8091958877921389,
+      "CV Precision": 0.6825862397120825,
+      "CV Recall": 0.5264214046822742,
+      "CV F1 Score": 0.5941989913722192,
+      "CV ROC-AUC": 0.8645054652282361,
+      "CV ROC-AUC Std": 0.010755577169440053
+    },
+    {
+      "Model": "Random Forest",
+      "CV Accuracy": 0.7770706429146683,
+      "CV Precision": 0.5572818820322849,
+      "CV Recall": 0.7812709030100334,
+      "CV F1 Score": 0.6503711776550618,
+      "CV ROC-AUC": 0.8628466325167683,
+      "CV ROC-AUC Std": 0.009129123110651897
+    },
+    {
+      "Model": "Logistic Regression",
+      "CV Accuracy": 0.7575458509915667,
+      "CV Precision": 0.5283292918635192,
+      "CV Recall": 0.8100334448160537,
+      "CV F1 Score": 0.6393150091073612,
+      "CV ROC-AUC": 0.8589636811479717,
+      "CV ROC-AUC Std": 0.012633479552962365
+    },
+    {
+      "Model": "Decision Tree",
+      "CV Accuracy": 0.7481375127856379,
+      "CV Precision": 0.5160441670700232,
+      "CV Recall": 0.814715719063545,
+      "CV F1 Score": 0.6317730332339101,
+      "CV ROC-AUC": 0.8453769607770448,
+      "CV ROC-AUC Std": 0.01349205126737014
+    }
+  ],
+  "optimal_threshold": 0.35,
+  "risk_tiers": {
+    "low_max": 0.25,
+    "medium_max": 0.35
+  },
+  "feature_columns": [
+    "Tenure Months",
+    "Monthly Charges",
+    "Total Charges",
+    "CLTV",
+    "Gender",
+    "Senior Citizen",
+    "Partner",
+    "Dependents",
+    "Phone Service",
+    "Multiple Lines",
+    "Internet Service",
+    "Online Security",
+    "Online Backup",
+    "Device Protection",
+    "Tech Support",
+    "Streaming TV",
+    "Streaming Movies",
+    "Contract",
+    "Paperless Billing",
+    "Payment Method"
+  ],
+  "sklearn_version": "1.9.0",
+  "trained_at_utc": "2026-11-25T08:47:44.378788+00:00",
+  "test_metrics_default_0_50": {
+    "threshold": 0.5,
+    "accuracy": 0.8076650106458482,
+    "precision": 0.6782006920415224,
+    "recall": 0.5240641711229946,
+    "f1": 0.5912518853695324,
+    "roc_auc": 0.8553992611537367,
+    "pr_auc": 0.6685752131240877,
+    "confusion_matrix": [
+      [
+        942,
+        93
+      ],
+      [
+        178,
+        196
+      ]
+    ]
+  },
+  "test_metrics_tuned_threshold": {
+    "threshold": 0.35,
+    "accuracy": 0.7849538679914834,
+    "precision": 0.576017130620985,
+    "recall": 0.7192513368983957,
+    "f1": 0.6397146254458977,
+    "roc_auc": 0.8553992611537367,
+    "pr_auc": 0.6685752131240877,
+    "confusion_matrix": [
+      [
+        837,
+        198
+      ],
+      [
+        105,
+        269
+      ]
+    ]
+  },
+  "top_permutation_features": [
+    {
+      "Feature": "Contract",
+      "Importance": 0.06920599860497538,
+      "Std": 0.0047456477999228645
+    },
+    {
+      "Feature": "Tenure Months",
+      "Importance": 0.034906223358908604,
+      "Std": 0.002530530715282126
+    },
+    {
+      "Feature": "Dependents",
+      "Importance": 0.03197073032111376,
+      "Std": 0.004696347522112611
+    },
+    {
+      "Feature": "Internet Service",
+      "Importance": 0.010570151644320225,
+      "Std": 0.003959707867225015
+    },
+    {
+      "Feature": "Online Security",
+      "Importance": 0.0067191092510783925,
+      "Std": 0.0014456495840431162
+    },
+    {
+      "Feature": "Monthly Charges",
+      "Importance": 0.0058114392001857975,
+      "Std": 0.0025083893578482434
+    },
+    {
+      "Feature": "Total Charges",
+      "Importance": 0.004766979255470127,
+      "Std": 0.0013463586839662176
+    },
+    {
+      "Feature": "Tech Support",
+      "Importance": 0.003902580795163735,
+      "Std": 0.001408320472038039
+    },
+    {
+      "Feature": "Partner",
+      "Importance": 0.0024521429125007434,
+      "Std": 0.0008957922742193747
+    },
+    {
+      "Feature": "Paperless Billing",
+      "Importance": 0.002147433413417843,
+      "Std": 0.0010172805853386716
+    }
+  ]
+}

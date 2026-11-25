@@ -1,90 +1,72 @@
+"""Data cleaning and schema preparation for the IBM Telco Customer Churn dataset.
+
+Note: Missing-value imputation is intentionally NOT performed here on the full
+dataset to prevent train/test data leakage. Missing values in numeric columns
+are coerced to NaN and imputed inside the scikit-learn Pipeline fit on X_train.
+"""
+
+from pathlib import Path
+
 import pandas as pd
 
-# --------------------------------------------------
-# 1. Load dataset
-# --------------------------------------------------
-
-file_path = "data/raw/Customer_churn.csv"
-
-df = pd.read_csv(file_path)
-
-print("=" * 60)
-print("CUSTOMER CHURN - DATA PREPROCESSING")
-print("=" * 60)
-
-print("\nOriginal Dataset Shape:")
-print(df.shape)
-
-
-# --------------------------------------------------
-# 2. Remove unnecessary and leakage columns
-# --------------------------------------------------
-
-columns_to_drop = [
-    "CustomerID",
-    "Count",
-    "Country",
-    "State",
-    "Lat Long",
-    "Churn Value",
-    "Churn Score",
-    "Churn Reason"
-]
-
-df = df.drop(columns=columns_to_drop)
-
-print("\nShape after removing unnecessary/leakage columns:")
-print(df.shape)
-
-
-# --------------------------------------------------
-# 3. Convert Total Charges to numeric
-# --------------------------------------------------
-
-df["Total Charges"] = pd.to_numeric(
-    df["Total Charges"],
-    errors="coerce"
+from src.config import (
+    CLEANED_DATA_PATH,
+    DROP_RAW_COLUMNS,
+    PROCESSED_DATA_DIR,
+    RAW_DATA_PATH,
+    TARGET_COLUMN,
 )
 
-print("\nMissing values after converting Total Charges:")
-print(df["Total Charges"].isnull().sum())
+
+def clean_raw_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean raw Telco churn DataFrame without leaking test-set statistics."""
+    cleaned = df.copy()
+
+    cols_to_drop = [c for c in DROP_RAW_COLUMNS if c in cleaned.columns]
+    cleaned = cleaned.drop(columns=cols_to_drop)
+
+    if "Total Charges" in cleaned.columns:
+        cleaned["Total Charges"] = pd.to_numeric(
+            cleaned["Total Charges"], errors="coerce"
+        )
+
+    if TARGET_COLUMN in cleaned.columns:
+        if cleaned[TARGET_COLUMN].dtype == object or str(cleaned[TARGET_COLUMN].dtype) == "str":
+            cleaned[TARGET_COLUMN] = cleaned[TARGET_COLUMN].map({"Yes": 1, "No": 0})
+        if cleaned[TARGET_COLUMN].isnull().any():
+            raise ValueError(
+                f"Unexpected values in target column '{TARGET_COLUMN}'; "
+                "expected 'Yes'/'No' or 1/0."
+            )
+        cleaned[TARGET_COLUMN] = cleaned[TARGET_COLUMN].astype(int)
+
+    return cleaned
 
 
-# --------------------------------------------------
-# 4. Handle missing values
-# --------------------------------------------------
+def load_and_clean_data(
+    raw_path: Path = RAW_DATA_PATH,
+    output_path: Path = CLEANED_DATA_PATH,
+) -> pd.DataFrame:
+    """Load raw CSV, clean it, and save to processed directory."""
+    if not raw_path.exists():
+        raise FileNotFoundError(f"Raw dataset not found at: {raw_path}")
 
-df["Total Charges"] = df["Total Charges"].fillna(
-    df["Total Charges"].median()
-)
+    df = pd.read_csv(raw_path)
+    cleaned = clean_raw_data(df)
 
-print("\nMissing values after cleaning:")
-print(df.isnull().sum().sum())
+    PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    cleaned.to_csv(output_path, index=False)
 
+    print("=" * 60)
+    print("CUSTOMER CHURN - DATA PREPROCESSING")
+    print("=" * 60)
+    print(f"Original Shape: {df.shape}")
+    print(f"Cleaned Shape : {cleaned.shape}")
+    print(f"Coerced NaNs in Total Charges (deferred to Pipeline imputer): {cleaned['Total Charges'].isnull().sum()}")
+    print(f"Saved cleaned dataset to: {output_path}")
 
-# --------------------------------------------------
-# 5. Convert target variable
-# --------------------------------------------------
-
-df["Churn Label"] = df["Churn Label"].map({
-    "Yes": 1,
-    "No": 0
-})
-
-print("\nTarget variable:")
-print(df["Churn Label"].value_counts())
+    return cleaned
 
 
-# --------------------------------------------------
-# 6. Save cleaned dataset
-# --------------------------------------------------
-
-output_path = "data/processed/cleaned_customer_churn.csv"
-
-df.to_csv(output_path, index=False)
-
-print("\nCleaned Dataset Shape:")
-print(df.shape)
-
-print("\nCleaned dataset saved successfully!")
-print(output_path)
+if __name__ == "__main__":
+    load_and_clean_data()
